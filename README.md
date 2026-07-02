@@ -19,9 +19,9 @@ The project demonstrates an end-to-end data analytics pipeline including data ex
 
 ## ✨ Features
 
-- 📂 Extracts YouTube Watch History from HTML files using BeautifulSoup
+- 📂 Parses YouTube Watch History HTML exported from Google Takeout using BeautifulSoup
 - 🧹 Cleans and preprocesses raw watch history data
-- ⏰ Extracts temporal features such as hour, day, month, and time category
+- ⏰ Extracts temporal features such as hour, day, date, and time category
 - 📊 Performs behavioral pattern analysis
 - 📢 Identifies advertisement-related entries
 - 🚩 Detects anomalous viewing activity using Mean + Standard Deviation
@@ -44,7 +44,7 @@ The project generates the following visualizations:
 - ⏰ Advertisement Distribution by Time Category
 - 🏷️ Content Category Distribution
 - ☁️ Word Cloud of Video Titles
-- 🚩 Top Repeated Advertisement Entries
+- 🚩 Most Frequently Appearing Advertisement Entries
 
 ---
 
@@ -52,11 +52,12 @@ The project generates the following visualizations:
 
 - Python
 - Pandas
-- BeautifulSoup
+- BeautifulSoup (HTML Parsing)
 - Matplotlib
 - Seaborn
 - WordCloud
 - Regular Expressions (Regex)
+- Google Takeout (Dataset Export)
 
 ---
 
@@ -158,10 +159,19 @@ Behavior Pattern Analysis
             ▼
  Reports & Insights
 ```
-
 ---
 
-## 📈 Generated Outputs
+## ⚡ How It Works
+
+1. The project reads the `watch-history.html` file exported from Google Takeout.
+2. BeautifulSoup parses the HTML and extracts video titles, timestamps, and advertisement metadata.
+3. The extracted data is cleaned and converted into a structured Pandas DataFrame.
+4. Temporal features are created to analyze viewing behavior.
+5. Statistical methods identify unusually high viewing activity.
+6. Multiple visualizations and reports are generated automatically.
+---
+
+## 📁 Generated Outputs
 
 The project automatically generates:
 
@@ -170,7 +180,7 @@ The project automatically generates:
 - ✅ Advertisement Anomaly Report
 - ✅ Multiple Visualization Charts
 - ✅ Word Cloud
-- ✅ Heatmap
+- ✅ Activity Heatmap
 - ✅ Behavioral Analysis Graphs
 
 ---
@@ -219,7 +229,7 @@ The project automatically generates:
 
 ## 🔮 Future Improvements
 
-- Machine Learning based anomaly detection using Isolation Forest or Local Outlier Factor
+- Machine Learning-based anomaly detection using Isolation Forest or Local Outlier Factor
 - Interactive dashboard using Streamlit or Plotly Dash
 - NLP-based automatic video categorization
 - Support for multiple Google Takeout exports
@@ -230,9 +240,7 @@ The project automatically generates:
 
 ## 🔒 Privacy Notice
 
-This repository **does not include personal YouTube Watch History data**.
-
-Users should export their own watch history using **Google Takeout** and place the `watch-history.html` file inside the `data/` directory before running the project.
+This repository intentionally excludes personal YouTube Watch History data to protect user privacy. Users should export their own watch history using Google Takeout and place the `watch-history.html` file inside the `data/` directory before running the project.
 
 ---
 
@@ -242,8 +250,7 @@ Users should export their own watch history using **Google Takeout** and place t
 
 B.Tech in Computer Science & Engineering (Artificial Intelligence & Machine Learning)
 
-GitHub: https://github.com/TamannaBhatt
-
+GitHub: **[@TamannaBhatt](https://github.com/TamannaBhatt)**
 ---
 
 ## 📜 License
