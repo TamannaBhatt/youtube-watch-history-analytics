@@ -199,23 +199,12 @@ The project automatically generates:
 
 ---
 
-### Advertisement Distribution
-
-![Advertisement Distribution](screenshots/advertisement_distribution.png)
-
----
-
 ### Word Cloud
 
 ![Word Cloud](screenshots/wordcloud.png)
 
 ---
 
-### Top Repeated Advertisement Entries
-
-![Top Advertisements](screenshots/top_advertisements.png)
-
----
 
 ## 📌 Key Insights
 
