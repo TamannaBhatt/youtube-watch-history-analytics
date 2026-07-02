@@ -13,7 +13,7 @@ A Python-based data analytics project that extracts, preprocesses, and analyzes 
 
 This project analyzes YouTube Watch History data exported from Google Takeout in HTML format. The raw data is parsed, cleaned, transformed, and analyzed to identify user behavior patterns, viewing trends, and advertisement-related anomalies.
 
-The project demonstrates an end-to-end data analytics pipeline including data extraction, preprocessing, feature engineering, statistical anomaly detection, visualization, and automated report generation using Python.
+The project demonstrates an end-to-end data analytics workflow including data extraction, preprocessing, feature engineering, statistical anomaly detection, visualization, and automated report generation using Python.
 
 ---
 
@@ -229,7 +229,7 @@ The project automatically generates:
 
 ## 🔮 Future Improvements
 
-- Machine Learning-based anomaly detection using Isolation Forest or Local Outlier Factor
+- Machine Learning-based anomaly detection using Isolation Forest or One-Class SVM
 - Interactive dashboard using Streamlit or Plotly Dash
 - NLP-based automatic video categorization
 - Support for multiple Google Takeout exports
@@ -251,6 +251,7 @@ This repository intentionally excludes personal YouTube Watch History data to pr
 B.Tech in Computer Science & Engineering (Artificial Intelligence & Machine Learning)
 
 GitHub: **[@TamannaBhatt](https://github.com/TamannaBhatt)**
+
 ---
 
 ## 📜 License
