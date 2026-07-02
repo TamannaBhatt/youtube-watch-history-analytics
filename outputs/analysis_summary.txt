@@ -1,0 +1,15 @@
+YouTube Watch History Analysis Summary
+==================================================
+
+Total Watch Records : 500
+Normal Videos       : 393
+Advertisements      : 107
+
+Peak Activity Hour  : 9
+Peak Activity Day   : Friday
+Most Common Category: Others
+
+Anomalous Hours
+--------------------------
+Hour 9: 90 videos
+Hour 19: 52 videos

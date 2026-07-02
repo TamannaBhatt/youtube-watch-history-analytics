@@ -1,0 +1,1048 @@
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+import os
+import re
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from bs4 import BeautifulSoup
+from wordcloud import WordCloud
+
+# ==========================================================
+# Configuration
+# ==========================================================
+
+OUTPUT_DIR = "outputs"
+
+os.makedirs(
+    OUTPUT_DIR,
+    exist_ok=True
+)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+FILE_PATH = os.path.join(
+    BASE_DIR,
+    "..",
+    "data",
+    "watch-history.html"
+)
+
+
+# ==========================================================
+# Data Extraction
+# ==========================================================
+
+def load_watch_history(file_path):
+
+    with open(
+        file_path,
+        "r",
+        encoding="utf-8"
+    ) as f:
+
+        soup = BeautifulSoup(
+            f,
+            "html.parser"
+        )
+
+    blocks = soup.find_all("div")
+
+    pattern = r"\d{1,2}\s\w+\s\d{4},\s\d{2}:\d{2}:\d{2}\sIST"
+
+    records = []
+
+    for block in blocks:
+
+        try:
+
+            text = block.get_text(
+                " ",
+                strip=True
+            )
+
+            if "Watched " not in text:
+                continue
+
+            links = block.find_all("a")
+
+            if len(links) == 0:
+                continue
+
+            title = links[0].text.strip()
+
+            match = re.search(
+                pattern,
+                text
+            )
+
+            if not match:
+                continue
+
+            watch_time = match.group()
+
+            is_ad = "From Google Ads" in text
+
+            records.append({
+
+                "title": title,
+
+                "watch_time": watch_time,
+
+                "is_ad": is_ad,
+
+                "raw_text": text
+
+            })
+
+        except Exception:
+            continue
+
+    df = pd.DataFrame(records)
+
+    print("Raw Records :", len(df))
+
+    return df
+
+# ==========================================================
+# Data Preprocessing
+# ==========================================================
+
+def preprocess_data(df):
+
+    df.drop_duplicates(
+        inplace=True
+    )
+
+    df["watch_time"] = pd.to_datetime(
+
+        df["watch_time"],
+
+        format="%d %B %Y, %H:%M:%S IST",
+
+        errors="coerce"
+
+    )
+
+    df.dropna(
+        inplace=True
+    )
+
+    return df
+
+
+# ==========================================================
+# Feature Engineering
+# ==========================================================
+
+def get_time_category(hour):
+
+    if 5 <= hour < 12:
+        return "Morning"
+
+    elif 12 <= hour < 17:
+        return "Afternoon"
+
+    elif 17 <= hour < 21:
+        return "Evening"
+
+    return "Night"
+
+
+def create_features(df):
+
+    df["hour"] = df["watch_time"].dt.hour
+
+    df["day"] = df["watch_time"].dt.day_name()
+
+    df["date"] = df["watch_time"].dt.date
+
+    df["time_category"] = df["hour"].apply(
+        get_time_category
+    )
+
+    return df
+
+# ==========================================================
+# Dataset Summary
+# ==========================================================
+
+def dataset_summary(df):
+
+    print("\n" + "=" * 60)
+    print("YouTube Watch History Analysis")
+    print("=" * 60)
+
+    print(f"Total Watch Records      : {len(df)}")
+    print(f"Normal Watch Entries     : {(~df['is_ad']).sum()}")
+    print(f"Advertisement Entries    : {df['is_ad'].sum()}")
+
+    print("=" * 60)
+
+
+# ==========================================================
+# Hourly Activity Analysis
+# ==========================================================
+
+def hourly_activity_analysis(df):
+
+    hour_counts = (
+        df["hour"]
+        .value_counts()
+        .sort_index()
+    )
+
+    return hour_counts
+
+
+# ==========================================================
+# Statistical Anomaly Detection
+# ==========================================================
+
+def detect_anomalies(hour_counts):
+
+    mean_activity = hour_counts.mean()
+
+    std_activity = hour_counts.std()
+
+    threshold = mean_activity + std_activity
+
+    anomalies = hour_counts[
+        hour_counts > threshold
+    ]
+
+    print("\nHourly Activity\n")
+
+    print(hour_counts)
+
+    print("\nStatistical Anomalies\n")
+
+    print(anomalies)
+
+    print("\nSummary\n")
+
+    print(f"Peak Activity Hour       : {hour_counts.idxmax()}")
+
+    print(f"Maximum Videos Watched   : {hour_counts.max()}")
+
+    print(f"Anomalous Hours          : {list(anomalies.index)}")
+
+    return threshold, anomalies
+
+# ==========================================================
+# Content Category Analysis
+# ==========================================================
+
+CATEGORY_KEYWORDS = {
+
+    "Education": [
+        "CampusX","Python","Machine Learning",
+        "AI","ML","Programming","API",
+        "Tensor","CNN","Developer",
+        "Code","Data"
+    ],
+
+    "Technology":[
+        "Google","Android","Phone",
+        "Laptop","Windows","Tech",
+        "OpenAI","ChatGPT"
+    ],
+
+    "Beauty":[
+        "Hair","Beauty","Salon",
+        "Skin","Glow","Serum",
+        "Face","Makeup"
+    ],
+
+    "Entertainment":[
+        "Movie","Trailer",
+        "Comedy","Netflix",
+        "Episode","Show"
+    ],
+
+    "Music":[
+        "Song","Lyrics",
+        "Music","Audio",
+        "Official Video"
+    ],
+
+    "Gaming":[
+        "Game","Gaming",
+        "Minecraft","BGMI",
+        "PUBG","Valorant"
+    ],
+
+    "News":[
+        "News","Breaking",
+        "Live","Update"
+    ],
+
+    "Shopping":[
+        "Amazon","Flipkart",
+        "Review","Unboxing"
+    ]
+
+}
+
+
+def categorize_video(title):
+
+    title = title.lower()
+
+    for category, keywords in CATEGORY_KEYWORDS.items():
+
+        for keyword in keywords:
+
+            if keyword.lower() in title:
+
+                return category
+
+    return "Others"
+
+
+def add_content_categories(df):
+
+    df["category"] = df["title"].apply(
+        categorize_video
+    )
+
+    return df
+
+# ==========================================================
+# Weekly Activity Analysis
+# ==========================================================
+
+def weekly_activity_analysis(df):
+
+    day_order = [
+
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+
+    ]
+
+    weekly_activity = (
+
+        df["day"]
+
+        .value_counts()
+
+        .reindex(day_order)
+
+    )
+
+    return weekly_activity
+
+
+# ==========================================================
+# Top Advertisement Videos
+# ==========================================================
+
+def top_ads_analysis(df):
+
+    top_ads = (
+
+        df[df["is_ad"] == True]["title"]
+
+        .value_counts()
+
+        .head(10)
+
+    )
+
+    return top_ads
+
+# ==========================================================
+# Top Active Dates
+# ==========================================================
+
+def top_active_dates(df):
+
+    active_dates = (
+
+        df["date"]
+
+        .value_counts()
+
+        .head(10)
+
+    )
+
+    return active_dates
+
+# ==========================================================
+# Hourly Activity Graph
+# ==========================================================
+
+def plot_hourly_activity(hour_counts, threshold):
+
+    plt.figure(figsize=(12,6))
+
+    hour_counts.plot(
+        kind="bar",
+        color="steelblue",
+        edgecolor="black"
+    )
+
+    plt.axhline(
+        threshold,
+        color="red",
+        linestyle="--",
+        linewidth=2,
+        label="Anomaly Threshold"
+    )
+
+    plt.title("Hourly YouTube Watch Activity", fontsize=15)
+
+    plt.xlabel("Hour")
+
+    plt.ylabel("Videos Watched")
+
+    plt.xticks(rotation=0)
+
+    plt.legend()
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            OUTPUT_DIR,
+            "hourly_activity.png"
+        ),
+        dpi=300
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Weekly Activity Graph
+# ==========================================================
+
+def plot_weekly_activity(weekly_activity):
+
+    plt.figure(figsize=(10,5))
+
+    weekly_activity.plot(
+        kind="bar",
+        color="skyblue",
+        edgecolor="black"
+    )
+
+    plt.title("Weekly YouTube Activity")
+
+    plt.xlabel("Day")
+
+    plt.ylabel("Videos Watched")
+
+    plt.xticks(rotation=45)
+
+    plt.tight_layout()
+
+    plt.savefig(
+        os.path.join(
+            OUTPUT_DIR,
+            "weekly_activity.png"
+        ),
+        dpi=300
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Day vs Hour Heatmap
+# ==========================================================
+
+def plot_heatmap(df):
+
+    day_order = [
+
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday"
+
+    ]
+
+    heatmap_data = df.pivot_table(
+
+        index="day",
+
+        columns="hour",
+
+        values="title",
+
+        aggfunc="count",
+
+        fill_value=0
+
+    )
+
+    heatmap_data = heatmap_data.reindex(day_order)
+
+    plt.figure(figsize=(14,6))
+
+    sns.heatmap(
+
+        heatmap_data,
+
+        annot=True,
+
+        fmt="d",
+
+        cmap="YlOrRd",
+
+        linewidths=0.5
+
+    )
+
+    plt.title("Day vs Hour Activity Heatmap")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "activity_heatmap.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Watch Distribution
+# ==========================================================
+
+def plot_watch_distribution(df):
+
+    plt.figure(figsize=(8,8))
+
+    df["time_category"].value_counts().plot(
+
+        kind="pie",
+
+        autopct="%1.1f%%",
+
+        startangle=90
+
+    )
+
+    plt.ylabel("")
+
+    plt.title("Watch Distribution by Time of Day")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "watch_distribution.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Advertisement Distribution
+# ==========================================================
+
+def plot_ad_distribution(df):
+
+    plt.figure(figsize=(8,8))
+
+    df["is_ad"].value_counts().rename({
+
+        False:"Normal Videos",
+
+        True:"Advertisements"
+
+    }).plot(
+
+        kind="pie",
+
+        autopct="%1.1f%%",
+
+        startangle=90
+
+    )
+
+    plt.ylabel("")
+
+    plt.title("Advertisement Distribution")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "advertisement_distribution.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Advertisement by Time Category
+# ==========================================================
+
+def plot_advertisement_by_time(df):
+
+    ad_time = pd.crosstab(
+
+        df["time_category"],
+
+        df["is_ad"]
+
+    )
+
+    ad_time.columns = [
+
+        "Normal",
+
+        "Advertisement"
+
+    ]
+
+    plt.figure(figsize=(9,5))
+
+    ad_time.plot(
+
+        kind="bar"
+
+    )
+
+    plt.title("Advertisement Distribution by Time Category")
+
+    plt.xlabel("Time Category")
+
+    plt.ylabel("Videos")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "advertisement_by_time.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Top Advertisement Videos
+# ==========================================================
+
+def plot_top_ads(top_ads):
+
+    labels = [
+
+        title[:50] + "..."
+
+        if len(title) > 50
+
+        else title
+
+        for title in top_ads.index
+
+    ]
+
+    plt.figure(figsize=(12,6))
+
+    plt.barh(
+        labels,
+        top_ads.values,
+        color="crimson"
+    )
+
+    plt.title("Top 10 Most Frequent Advertisement Videos")
+
+    plt.xlabel("Advertisement Count")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "top_advertisements.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Top Active Dates
+# ==========================================================
+
+def plot_top_dates(active_dates):
+
+    plt.figure(figsize=(10,5))
+
+    active_dates.sort_values().plot(
+
+        kind="barh",
+
+        color="coral"
+
+    )
+
+    plt.title("Top 10 Most Active Dates")
+
+    plt.xlabel("Videos Watched")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "top_active_dates.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Content Categories
+# ==========================================================
+
+def plot_content_categories(df):
+
+    plt.figure(figsize=(10,5))
+
+    df["category"].value_counts().plot(
+
+        kind="bar",
+
+        color="mediumpurple",
+
+        edgecolor="black"
+
+    )
+
+    plt.title("Content Category Distribution")
+
+    plt.xlabel("Category")
+
+    plt.ylabel("Videos")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "content_category_distribution.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+
+# ==========================================================
+# Word Cloud
+# ==========================================================
+
+def generate_wordcloud(df):
+
+    text = " ".join(
+
+        df["title"].astype(str)
+
+    )
+
+    wordcloud = WordCloud(
+
+        width=1200,
+
+        height=600,
+
+        background_color="white",
+
+        collocations=False
+
+    ).generate(text)
+
+    plt.figure(figsize=(15,7))
+
+    plt.imshow(
+
+        wordcloud,
+
+        interpolation="bilinear"
+
+    )
+
+    plt.axis("off")
+
+    plt.title("Most Common Words in Video Titles")
+
+    plt.tight_layout()
+
+    plt.savefig(
+
+        os.path.join(
+
+            OUTPUT_DIR,
+
+            "wordcloud.png"
+
+        ),
+
+        dpi=300
+
+    )
+
+    plt.show()
+
+# ==========================================================
+# Export Functions
+# ==========================================================
+
+def save_cleaned_dataset(df):
+
+    cleaned_csv = os.path.join(
+        OUTPUT_DIR,
+        "youtube_watch_history_cleaned.csv"
+    )
+
+    df.to_csv(
+        cleaned_csv,
+        index=False
+    )
+
+    print(f"\nCleaned dataset saved to: {cleaned_csv}")
+
+
+def save_analysis_summary(df,
+                          hour_counts,
+                          anomalies,
+                          weekly_activity):
+
+    summary_file = os.path.join(
+        OUTPUT_DIR,
+        "analysis_summary.txt"
+    )
+
+    with open(
+        summary_file,
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        f.write("YouTube Watch History Analysis Summary\n")
+        f.write("=" * 50 + "\n\n")
+
+        f.write(f"Total Watch Records : {len(df)}\n")
+        f.write(f"Normal Videos       : {(~df['is_ad']).sum()}\n")
+        f.write(f"Advertisements      : {df['is_ad'].sum()}\n\n")
+
+        f.write(f"Peak Activity Hour  : {hour_counts.idxmax()}\n")
+        f.write(f"Peak Activity Day   : {weekly_activity.idxmax()}\n")
+        f.write(f"Most Common Category: {df['category'].value_counts().idxmax()}\n\n")
+
+        f.write("Anomalous Hours\n")
+        f.write("--------------------------\n")
+
+        if len(anomalies) > 0:
+
+            for hour, count in anomalies.items():
+
+                f.write(
+                    f"Hour {hour}: {count} videos\n"
+                )
+
+        else:
+
+            f.write(
+                "No anomalies detected.\n"
+            )
+
+    print(f"Summary saved to: {summary_file}")
+
+
+def save_reports(top_ads,
+                 anomalies):
+
+    top_ads.to_csv(
+        os.path.join(
+            OUTPUT_DIR,
+            "top_advertisements.csv"
+        )
+    )
+
+    anomalies.to_csv(
+        os.path.join(
+            OUTPUT_DIR,
+            "anomaly_report.csv"
+        )
+    )
+
+# ==========================================================
+# Main Function
+# ==========================================================
+
+def main():
+
+    # ------------------------
+    # Load Dataset
+    # ------------------------
+
+    df = load_watch_history(FILE_PATH)
+
+    # ------------------------
+    # Preprocess
+    # ------------------------
+
+    df = preprocess_data(df)
+
+    df = create_features(df)
+
+    df = add_content_categories(df)
+
+    # ------------------------
+    # Analysis
+    # ------------------------
+
+    dataset_summary(df)
+
+    hour_counts = hourly_activity_analysis(df)
+
+    threshold, anomalies = detect_anomalies(
+        hour_counts
+    )
+
+    weekly_activity = weekly_activity_analysis(
+        df
+    )
+
+    top_ads = top_ads_analysis(df)
+
+    active_dates = top_active_dates(df)
+
+    # ------------------------
+    # Visualizations
+    # ------------------------
+
+    plot_hourly_activity(
+        hour_counts,
+        threshold
+    )
+
+    plot_weekly_activity(
+        weekly_activity
+    )
+
+    plot_heatmap(df)
+
+    plot_watch_distribution(df)
+
+    plot_ad_distribution(df)
+
+    plot_advertisement_by_time(df)
+
+    plot_top_ads(top_ads)
+
+    plot_top_dates(
+        active_dates
+    )
+
+    plot_content_categories(df)
+
+    generate_wordcloud(df)
+
+    # ------------------------
+    # Export Results
+    # ------------------------
+
+    save_cleaned_dataset(df)
+
+    save_analysis_summary(
+
+        df,
+
+        hour_counts,
+
+        anomalies,
+
+        weekly_activity
+
+    )
+
+    save_reports(
+    top_ads,
+    anomalies
+    )
+
+    print("\n" + "=" * 60)
+
+    print("Analysis Completed Successfully")
+
+    print("=" * 60)
+
+
+if __name__ == "__main__":
+    main()

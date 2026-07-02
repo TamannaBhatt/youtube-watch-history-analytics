@@ -1,0 +1,3 @@
+Place your exported watch-history.html from Google Takeout in this folder before running the project.
+
+The HTML file is not included in this repository to protect user privacy.
